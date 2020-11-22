@@ -149,11 +149,13 @@ def generate_cube(cube_size):
         rotate(cube, index, plane, rotation)
     
     # TODO: Allow the user to specify min/max random cost per cubie.
-    cubie_cost = np.empty((cube_size, cube_size, cube_size))
+    cubie_cost = np.full((cube_size, cube_size, cube_size), 0)
     for i in range(cubie_cost.shape[0]):
         for j in range(cubie_cost.shape[1]):
             for k in range(cubie_cost.shape[2]):
-                cubie_cost[i][j][k] = random.randint(0, 20)
+                if i == 0 or j == 0 or k == 0 or\
+                        i == cubie_cost.shape[0] - 1 or j == cubie_cost.shape[1] - 1 or k == cubie_cost.shape[2] - 1:
+                    cubie_cost[i][j][k] = random.randint(0, 20)
                 
     return (cube,0,cubie_cost)
     
@@ -165,6 +167,27 @@ def is_game_over(cube):
                 if (cube[i][j][k] != color):
                     return False
     return True
+    
+def to_cost_identity(cube):
+    num_cubies = cube.shape[1]
+    cost = np.full((num_cubies, num_cubies, num_cubies), 0)
+    for i in range(cube.shape[0]):
+        for j in range(cube.shape[1]):
+            for k in range(cube.shape[2]):
+                if cube[i][j][k] != 0:
+                    if i == 0:
+                        cost[0][j][k] = 1
+                    elif i == 1:
+                        cost[j][num_cubies - 1][k] = 1
+                    elif i == 2:
+                        cost[j][k][0] = 1
+                    elif i == 3:
+                        cost[j][num_cubies - 1 - k][num_cubies - 1] = 1
+                    elif i == 4:
+                        cost[j][0][num_cubies - 1 - k] = 1
+                    elif i == 5:
+                        cost[num_cubies - 1][num_cubies - 1 - j][k] = 1
+    return cost
 
 def parse_cmd(cube_cost_cubieCost, cmd):
     # Commands will be of the form:
@@ -225,8 +248,13 @@ def parse_cmd(cube_cost_cubieCost, cmd):
     
     # Determine new cost based on which cubies moved.
     prev_cube = prev_cube - cube
-    print("Cube diff:")
-    print(prev_cube)
+    #print("Cube diff:")
+    #print(prev_cube)
+    #print("Cost identity matrix:")
+    #print(to_cost_identity(prev_cube))
+    
+    cost = (cube_cost_cubieCost[2] * to_cost_identity(prev_cube)).sum()
+    print("Cost: " + str(cost))
     
     # Any non-zero values include colors which have changed.
     #for i in range(prev_cube.shape[0]):
@@ -292,7 +320,7 @@ def solve(cube_cost_cubieCost):
 def main():
     global g_cube_size
     print("Enter the size of the cube (3-7; default is 3)")
-    cube_size = input(">")
+    cube_size = input("> ")
     if cube_size != "":
         try:
             g_cube_size = int(cube_size)
@@ -311,7 +339,7 @@ def main():
     print("0 - Manual gameplay")
     print("1 - Tree-based AI")
     #print("2 - Baseline (random) AI")
-    mode = input(">")
+    mode = input("> ")
     if mode != "":
         try:
             g_mode = int(mode)
@@ -327,7 +355,8 @@ def main():
         moves = solve(cube_cost_cubieCost)
     
     # Create window for graphical cube.
-    grp.createWin(g_cube_size, g_winWidth, g_winHeight)
+    rubiks_grp = grp.RubiksGraphics()
+    rubiks_grp.create_win(g_cube_size, g_winWidth, g_winHeight)
 
     while (True):
         cube = cube_cost_cubieCost[0]
@@ -335,11 +364,12 @@ def main():
         cubieCost = cube_cost_cubieCost[2]
         
         # Draw cube/print state.
-        grp.drawCube(cube)
+        rubiks_grp.draw_cube(cube)
+            
         print("State:")
         print("In order: Up, Front, Left, Right, Back, Down");
         print(cube)
-        print("Cost: " + str(cost))
+        print("Total Cost: " + str(cost))
         print("Cost per cubie:")
         print(cubieCost)
         
